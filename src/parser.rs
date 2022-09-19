@@ -1,7 +1,7 @@
 use nom::{
     branch::alt,
-    bytes::complete::tag,
-    character::complete::{digit1, space1},
+    bytes::complete::{tag, is_a},
+    character::{complete::{digit1, space1}, is_digit},
     combinator::{map, map_res, verify},
     sequence::tuple,
     IResult,
@@ -100,6 +100,36 @@ fn test_prim() {
     assert_eq!(prim("neg"), Ok(("", Neg)));
 }
 
+fn symbol(input: &str) -> IResult<&str, String> {
+    map(
+        verify(
+            is_a("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_.$:0123456789"),
+            |c: &str| !is_digit(c.as_bytes()[0]),
+        ),
+        |sym: &str| sym.to_string(),
+    )(input)
+}
+
+fn branching(input: &str) -> IResult<&str, Command> {
+    map(
+        tuple((
+            alt((
+                tag("label"),
+                tag("goto"),
+                tag("if-goto"),
+            )),
+            space1,
+            symbol
+        )),
+        |(op, _, sym)| match op {
+            "label" => Label(sym.to_string()),
+            "goto" => Goto(sym.to_string()),
+            "if-goto" => IfGoto(sym.to_string()),
+            _ => panic!("Unexpected parse {}", sym)
+        }
+    )(input)
+}
+
 pub fn parse(input: &str) -> Vec<Command> {
     let mut commands = vec![];
 
@@ -109,7 +139,7 @@ pub fn parse(input: &str) -> Vec<Command> {
             continue;
         }
 
-        let res = alt((push, pop, prim))(line);
+        let res = alt((push, pop, prim, branching))(line);
 
         match res {
             Ok(("", command)) => commands.push(command),

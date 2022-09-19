@@ -174,6 +174,37 @@ impl<'a> Translator<'a> {
         ]
     }
 
+    /// Convert VM label to Hack ASM symbol - for consistency across instructions
+    fn label_to_sym(&self, label: &str) -> String {
+        format!("{}:LABEL_{}", self.assembly, label)
+    }
+
+    fn label(&self, label: &str) -> Vec<String> {
+        svec![
+            format!("// label {}", label),
+            format!("({})", self.label_to_sym(label))
+        ]
+    }
+
+    fn goto(&self, label: &str) -> Vec<String> {
+        svec![
+            format!("// goto {}", label),
+            format!("@{}", self.label_to_sym(label)),
+            "0;JMP" // Unconditional jump
+        ]
+    }
+
+    fn if_goto(&self, label: &str) -> Vec<String> {
+        svec![
+            format!("// if-goto {}", label),
+            "@SP",
+            "AM=M-1",
+            "D=M",  // Stack popped into D
+            format!("@{}", self.label_to_sym(label)),
+            "D;JNE" // False is 0
+        ]
+    }
+
     pub fn translate(&mut self, commands: &Vec<Command>) -> Vec<String> {
         let mut instructions: Vec<String> = vec![];
 
@@ -190,6 +221,9 @@ impl<'a> Translator<'a> {
                 Eq => self.compare("eq", "EQ"),
                 Gt => self.compare("gt", "GT"),
                 Lt => self.compare("lt", "LT"),
+                Label(sym) => self.label(sym),
+                Goto(sym) => self.goto(sym),
+                IfGoto(sym) => self.if_goto(sym),
             };
 
             for line in translated {

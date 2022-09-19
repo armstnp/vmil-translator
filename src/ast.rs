@@ -12,6 +12,7 @@ pub enum Segment {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Command {
+    // Stack Basics
     Push(Segment, u16),
     Pop(Segment, u16),
     Add,
@@ -23,4 +24,9 @@ pub enum Command {
     And,
     Or,
     Not,
+
+    // Control
+    Label(String),
+    Goto(String),
+    IfGoto(String),
 }
